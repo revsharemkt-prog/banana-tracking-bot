@@ -1,4 +1,3 @@
-
 import gspread
 from google.oauth2.service_account import Credentials
 from playwright.sync_api import sync_playwright
@@ -6,7 +5,10 @@ from datetime import datetime
 import json
 import os
 
+# =========================
 # GOOGLE SHEETS AUTH (GITHUB SECRET)
+# =========================
+
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive"
@@ -27,21 +29,21 @@ sheet = client.open_by_key(
 
 rows = sheet.get_all_values()
 
-def color_row_rto(sheet, row_number):
-    sheet.format(f"A{row_number}:G{row_number}", {
-        "backgroundColor": {
-            "red": 1,
-            "green": 0.6,
-            "blue": 0.6
-        }
-    })
+# =========================
+# START ROW CONTROL
+# =========================
+START_ROW = 99  # change anytime
+
+# =========================
+# MAIN PROCESS
+# =========================
 
 with sync_playwright() as p:
 
     browser = p.chromium.launch(headless=True)
     page = browser.new_page()
 
-    for row_number, row in enumerate(rows[1:], start=2):
+    for row_number, row in enumerate(rows[START_ROW-1:], start=START_ROW):
 
         if len(row) < 6:
             continue
@@ -54,9 +56,13 @@ with sync_playwright() as p:
 
         # SKIP ONLY DELIVERED
         if current_status.upper() == "DELIVERED":
+            print(f"⛔ Skipping Delivered: {tracking}")
             continue
 
         is_new = (current_status == "")
+
+        print(f"\nChecking: {tracking}")
+        print(f"Status: {current_status if current_status else 'NEW'}")
 
         page.goto("https://bananaexpressgroup.com/tracking/")
         page.wait_for_timeout(2000)
@@ -84,15 +90,13 @@ with sync_playwright() as p:
                 new_status = "Delivered"
                 break
 
+        print("New Status:", new_status)
+
         # UPDATE SHEET
         if is_new or current_status != new_status:
-
             sheet.update_cell(row_number, 2, new_status)
 
-            if new_status == "RTO":
-                color_row_rto(sheet, row_number)
-
-        # UPDATE TIMESTAMP (COLUMN G)
+        # ALWAYS UPDATE TIME
         sheet.update_cell(
             row_number,
             7,
