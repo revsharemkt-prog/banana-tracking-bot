@@ -32,7 +32,7 @@ rows = sheet.get_all_values()
 # =========================
 # START ROW CONTROL
 # =========================
-START_ROW = 1  # change anytime
+START_ROW = 199  # change anytime
 
 # =========================
 # MAIN PROCESS
